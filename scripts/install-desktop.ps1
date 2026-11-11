@@ -1,7 +1,13 @@
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $cli = Join-Path $env:LOCALAPPDATA 'Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd'
-$package = Join-Path $projectRoot 'dsh-github-connect-0.5.1.tgz'
+$manifest = Get-Content -LiteralPath (Join-Path $projectRoot 'package.json') -Raw | ConvertFrom-Json
+$package = Join-Path $projectRoot ('{0}-{1}.tgz' -f $manifest.name, $manifest.version)
+if (-not (Test-Path -LiteralPath $package)) {
+    $latest = Get-ChildItem -LiteralPath $projectRoot -Filter ('{0}-*.tgz' -f $manifest.name) -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($latest) { $package = $latest.FullName }
+}
 if (-not (Test-Path -LiteralPath $cli)) { throw '未找到 DeepSeek Harness 桌面端命令，请先安装客户端。' }
 if (-not (Test-Path -LiteralPath $package)) { throw '未找到 tgz 安装包，请先运行 npm pack。' }
 if (Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue) {

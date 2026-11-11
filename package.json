@@ -1,6 +1,6 @@
 {
   "name": "dsh-github-studio",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "DeepSeek Harness GitHub 工作台：账号连接、仓库工具、AI 项目介绍与 Release 发布",
   "type": "module",
   "main": "lib/index.js",
