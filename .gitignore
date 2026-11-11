@@ -1,0 +1,17 @@
+node_modules/
+reference/
+.runtime/
+outputs/
+implement-stage/
+release/
+*.tgz
+*.zip
+*.log
+*.jsonl
+*.dpapi
+.env
+.env.*
+oauth.json
+credentials*
+attachments/
+workspace/

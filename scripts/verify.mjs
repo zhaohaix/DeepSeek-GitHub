@@ -1,0 +1,12 @@
+import {readFile,access,mkdir,writeFile} from 'node:fs/promises';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+const manifest=JSON.parse(await readFile('package.json','utf8'));
+for(const file of ['lib/index.js','lib/client.js','lib/core.mjs','lib/gh.mjs','lib/http.mjs','lib/tools.mjs','cordis.patch.yml'])await access(file);
+let client;vm.runInNewContext(await readFile('lib/client.js','utf8'),{document:{createElement:()=>({innerHTML:'',textContent:''})},window:{__ModuleLoader__:{load(row){assert.equal(row.id,manifest.name);client=row.factory(createRequire(import.meta.url));}}}});
+const sections=[];client.apply({slots:{inject(name,fn){fn();},register(options){sections.push(options);return()=>{};}}});
+assert.equal(sections.find(s=>s.name==='settings.section').label,'GitHub');
+assert.equal(sections.find(s=>s.name==='settings.section.icon').id,'github-connect');
+await mkdir('outputs',{recursive:true});await writeFile('outputs/artifact-check.json',JSON.stringify({version:manifest.version,hostEntry:true,clientFactory:true,settingsSection:'GitHub',date:new Date().toISOString()},null,2));
+console.log('Built artifact + settings registration verified');

@@ -1,0 +1,8 @@
+import{readFile,mkdir,writeFile}from'node:fs/promises';import{publicFiles}from'./public-files.mjs';
+const rules=[['url-credentials',/https?:\/\/[^\s/:]+:[^\s/@]+@/g],['email-address',/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi],['oauth-client-id',/\b(?:Ov|Iv)[A-Za-z0-9]{16,}\b/g],['github-token',/\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{30,})\b/g],['model-api-key',/\bsk-[A-Za-z0-9_-]{24,}\b/g],['personal-windows-path',/[A-Z]:[\\/]+Users[\\/]+[^\\/\s"']+[\\/]/gi],['private-key',/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----\s+[A-Za-z0-9+/=]{20,}/g]];
+export async function checkPublic(){const files=await publicFiles(),findings=[];for(const file of files){if(/\.(png|jpe?g)$/i.test(file))continue;const text=await readFile(file,'utf8');for(const [category,rule]of rules){rule.lastIndex=0;if(rule.test(text))findings.push({file,category});}}
+ for(const file of ['src/publisher.json','lib/publisher.json']){const j=JSON.parse((await readFile(file,'utf8')).replace(/^\uFEFF/,''));if(j.clientId!=='')findings.push({file,category:'preset-client-id-must-be-empty'});}
+ if(findings.length){console.error(JSON.stringify({status:'rejected',findings},null,2));throw Error('公开检查失败；仅显示文件名和类别，不显示匹配内容。');}
+ await mkdir('release',{recursive:true});await writeFile('release/PUBLIC-CHECK.json',JSON.stringify({status:'passed',checkedFiles:files.length,scope:'Allowlisted authored source and built files; no private runtime data',limitations:'Static pattern/allowlist check, not a guarantee of finding every secret or information already published elsewhere.'},null,2));return files;
+}
+if(process.argv[1]?.replaceAll('\\','/').endsWith('/check-public.mjs')){await checkPublic();console.log('公开文件白名单与敏感模式检查通过');}

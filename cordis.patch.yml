@@ -1,0 +1,3 @@
+- insert:
+    - id: github-connect
+      name: dsh-github-connect

@@ -1,0 +1,12 @@
+node_modules
+reference
+.runtime
+outputs
+implement-stage
+release
+*.tgz
+*.zip
+.env*
+*.dpapi
+*.jsonl
+oauth.json

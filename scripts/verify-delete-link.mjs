@@ -1,0 +1,23 @@
+import {build} from 'esbuild';
+import {chromium} from 'playwright';
+import {createServer} from 'node:http';
+import {readFile,writeFile} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+await build({stdin:{contents:"import React from 'react';import {createRoot} from 'react-dom/client';import {GitHubSettings} from './src/client.jsx';createRoot(document.getElementById('root')).render(React.createElement(GitHubSettings));",resolveDir:process.cwd(),loader:'jsx'},outfile:'.runtime/delete-ui.js',bundle:true,platform:'browser',loader:{'.css':'text'}});
+const js=await readFile('.runtime/delete-ui.js');const server=createServer((req,res)=>{res.setHeader('Content-Type',req.url==='/app.js'?'application/javascript':'text/html');res.end(req.url==='/app.js'?js:'<!DOCTYPE html><html lang="zh"><meta charset="utf-8"><body style="margin:0"><div id="root" style="max-width:700px;margin:24px auto;padding:0 16px"></div><script src="/app.js"></script></body></html>');});
+await new Promise(r=>server.listen(0,'127.0.0.1',r));const browser=await chromium.launch({channel:'msedge',headless:true});
+try{
+ const context=await browser.newContext({viewport:{width:900,height:900}}),page=await context.newPage(),requests=[],errors=[];page.on('request',r=>requests.push({url:r.url(),method:r.method()}));page.on('pageerror',e=>errors.push(e.message));
+ const own={owner:'test-user',name:'my-project',full_name:'test-user/my-project',default_branch:'main',private:false},foreign={...own,owner:'someone-else',full_name:'someone-else/my-project'};let user={id:1,login:'test-user',name:'删除跳转测试账号'};
+ await context.route('https://github.com/**',route=>route.fulfill({contentType:'text/html',body:'<title>Settings navigation fixture</title>'}));
+ await page.route('**/dsh-github/api/**',async route=>{const name=new URL(route.request().url()).pathname.split('/api/')[1];let data={};if(name==='state')data={user,login:{state:'complete'},operations:[],attachments:[]};else if(name==='repos')data={repositories:[own,foreign],page:1,hasMore:false};else if(name==='contents')data={kind:'directory',entries:[]};await route.fulfill({json:data});});
+ await page.goto('http://127.0.0.1:'+server.address().port);await page.getByRole('button',{name:'test-user/my-project 公开'}).click();const trigger=page.getByRole('button',{name:'删除仓库',exact:true});await trigger.click();const dialog=page.getByRole('dialog');await dialog.waitFor();await dialog.getByText('test-user/my-project',{exact:true}).waitFor();assert.equal(context.pages().length,1);await page.screenshot({path:'outputs/delete-confirmation-preview.png'});
+ await dialog.getByRole('button',{name:'取消',exact:true}).click();await dialog.waitFor({state:'hidden'});assert.equal(context.pages().length,1);
+ await trigger.click();await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});assert.equal(context.pages().length,1);
+ await trigger.click();const next=context.waitForEvent('page');await dialog.getByRole('link',{name:'前往官网删除',exact:true}).click();const target=await next;await target.waitForLoadState('domcontentloaded');const u=new URL(target.url());assert.equal(u.origin,'https://github.com');assert.equal(u.pathname,'/test-user/my-project/settings');assert.equal(u.hash,'#danger-zone');await target.close();await dialog.waitFor({state:'hidden'});
+ await page.getByRole('button',{name:'‹ 返回仓库列表',exact:true}).click();await page.getByRole('button',{name:'someone-else/my-project 公开'}).click();assert.equal(await page.getByRole('button',{name:'删除仓库',exact:true}).count(),0);
+ await page.getByRole('button',{name:'‹ 返回仓库列表',exact:true}).click();await page.getByRole('button',{name:'test-user/my-project 公开'}).click();await trigger.click();user={id:2,login:'different-user'};await dialog.waitFor({state:'hidden',timeout:10000});assert.equal(await page.getByRole('button',{name:'删除仓库',exact:true}).count(),0);
+ await page.setViewportSize({width:390,height:844});assert.equal(await page.locator('.dsh-github').evaluate(e=>e.scrollWidth<=e.clientWidth),true);
+ assert.equal(requests.some(r=>r.method==='DELETE'),false);assert.equal(requests.some(r=>r.url.includes('/api/')&&r.method!=='GET'),false);assert.deepEqual(errors,[]);
+ await writeFile('outputs/delete-link-check.json',JSON.stringify({version:'0.3.1',confirmationRequired:true,cancelDoesNotNavigate:true,escapeDoesNotNavigate:true,officialSettingsUrl:true,foreignRepositoryHidden:true,accountChangeClosesDialog:true,noDeleteApi:true,noBackendMutation:true,mobileNoOverflow:true,errors,navigation:'GitHub GET intercepted; no real deletion or account changes'},null,2));console.log('Delete confirmation + official settings navigation checks passed');
+}finally{await browser.close();await new Promise(r=>server.close(r));}
