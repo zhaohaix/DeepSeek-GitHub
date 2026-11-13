@@ -1,19 +1,21 @@
 {
   "name": "dsh-github-studio",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "description": "DeepSeek Harness GitHub 工作台：账号连接、仓库工具、AI 项目介绍与 Release 发布",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js",
     "./client": "./lib/client.js",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
   },
   "files": [
     "lib",
     "cordis.patch.yml",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "locale"
   ],
   "dsh": {
     "bundle": {
