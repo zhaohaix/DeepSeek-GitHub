@@ -4,7 +4,7 @@
 
 > 第三方开源项目，非 DeepSeek 或 GitHub 官方产品。适用于 Windows 上的 DeepSeek Harness；不适用于普通的 `chat.deepseek.com` 聊天网页。
 
-![DeepSeek GitHub Connect：仓库管理与发布入口](docs/images/01-cover.png)
+![DeepSeek GitHub Studio：仓库管理与发布入口](docs/images/01-cover.webp)
 
 ## 项目概述
 
@@ -32,7 +32,7 @@ DeepSeek GitHub Connect 将 GitHub 仓库操作集成到 Harness 的工具调用
 
 在“仓库 → 新建仓库”中，点击仓库名称旁的“传入程序/代码”。文件成功暂存后，“AI 自动介绍”按钮才会启用。AI 读取选中文件中的源码或说明片段，生成介绍并回填；用户可以继续修改，再预览创建仓库。
 
-![传入代码并生成仓库介绍](docs/images/02-ai-intro.png)
+![传入代码并生成仓库介绍](docs/images/02-ai-intro.webp)
 
 - 支持常见代码文件、README 和包含源码的 ZIP。
 - 不执行安装包，也不根据文件名猜测功能。
@@ -44,7 +44,7 @@ DeepSeek GitHub Connect 将 GitHub 仓库操作集成到 Harness 的工具调用
 
 新建仓库介绍以及程序发布页的版本标题、更新说明，在停止输入后自动保存到本机 GitHub 工作区。再次打开对应表单时，自动恢复可用草稿；版本文案按仓库保存。
 
-![发布文案自动保存与恢复](docs/images/03-autosave.png)
+![发布文案自动保存与恢复](docs/images/03-autosave.webp)
 
 草稿是本机文案备份，不是已经发布的 GitHub 内容。准备创建或发布操作后，会清理相应表单草稿；真正执行仍需到操作预览中确认。暂存安装包不等于已上传到 GitHub。
 
