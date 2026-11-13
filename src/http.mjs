@@ -6,7 +6,7 @@ import {Transform} from 'node:stream';
 import path from 'node:path';
 
 export const API='/dsh-github/api/';
-const ROUTES={state:'GET',repos:'GET',contents:'GET',releases:'GET','auth/start':'POST','auth/configure':'POST','auth/logout':'POST',prepare:'POST',confirm:'POST',reject:'POST',upload:'POST','attachment/remove':'POST','ai/copy':'POST','ai/program':'POST'};
+const ROUTES={state:'GET',repos:'GET',contents:'GET',releases:'GET','auth/start':'POST','auth/configure':'POST','auth/logout':'POST',prepare:'POST',confirm:'POST',reject:'POST',upload:'POST','attachment/remove':'POST','ai/copy':'POST','ai/program':'POST','draft/get':'POST','draft/save':'POST','draft/clear':'POST'};
 const json=(res,status,value)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(value));};
 async function body(req){let size=0;const parts=[];for await(const b of req){size+=b.length;if(size>3*1024*1024)throw Error('请求内容过大。');parts.push(b);}return JSON.parse(Buffer.concat(parts).toString('utf8')||'{}');}
 export function admitted(req,connection){
@@ -17,7 +17,7 @@ export function admitted(req,connection){
   if(req.headers['sec-fetch-site']==='cross-site')return false;
   return true;
 }
-export function routes({api,ops,auth,root,connection,releaseCopy}){
+export function routes({api,ops,auth,root,connection,releaseCopy,drafts}){
   return Object.entries(ROUTES).map(([name,method])=>({kind:'exact',path:API+name,handler:async(req,res)=>{
     if(!admitted(req,connection()))return json(res,403,{error:'需要本机已认证的 DeepSeek Harness 页面。'});
     if(req.method!==method)return json(res,405,{error:'请求方法不正确。'});
@@ -27,16 +27,17 @@ export function routes({api,ops,auth,root,connection,releaseCopy}){
       else if(name==='contents')result=await api.contents(q);
       else if(name==='releases')result=await api.releaseList(q);
       else if(name==='upload'){
-        const raw=req.headers['x-file-name'];if(typeof raw!=='string')throw Error('缺少附件名称。');const fileName=decodeURIComponent(raw);const id=randomUUID(),disk=path.join(root,'attachments',id);let size=0;
+        const raw=req.headers['x-file-name'];if(typeof raw!=='string')throw Error('缺少附件名称。');const purpose=req.headers['x-file-purpose']??'release';if(!['intro','release'].includes(purpose))throw Error('附件用途无效。');const fileName=decodeURIComponent(raw);const id=randomUUID(),disk=path.join(root,'attachments',id);let size=0;
         const limit=new Transform({transform(chunk,encoding,done){size+=chunk.length;if(size>=2*1024**3)done(Error('附件必须小于 2 GiB。'));else done(null,chunk);}});
-        try{await pipeline(req,limit,createWriteStream(disk,{flags:'wx',mode:0o600}));result=await ops.addAsset(fileName,disk,id);}catch(e){await unlink(disk).catch(()=>{});throw e;}
+        try{await pipeline(req,limit,createWriteStream(disk,{flags:'wx',mode:0o600}));result=await ops.addAsset(fileName,disk,id,purpose);}catch(e){await unlink(disk).catch(()=>{});throw e;}
       }else{const a=await body(req);
-        if(name==='ai/program'){if(!releaseCopy)throw Error('AI介绍服务未就绪。');result=await releaseCopy.describeProgram(a);}
+        if(name.startsWith('draft/')){if(!drafts)throw Error('草稿服务未就绪。');result=await drafts[name==='draft/get'?'load':name==='draft/save'?'save':'clear'](a);}
+        else if(name==='ai/program'){if(!releaseCopy)throw Error('AI介绍服务未就绪。');result=await releaseCopy.describeProgram(a);}
         else if(name==='ai/copy'){if(!releaseCopy)throw Error('AI文案服务尚未就绪。');result=await releaseCopy.create(a);}
         else if(name==='auth/start')result=await auth.start();
         else if(name==='auth/configure'){await auth.configure(a.clientId);result={ok:true};}
         else if(name==='auth/logout'){await auth.logout();ops.clearPending();result={ok:true};}
-        else if(name==='prepare')result=await ops.prepare(a.kind,a.args);
+        else if(name==='prepare'){result=await ops.prepare(a.kind,a.args);if(drafts&&a.kind==='create_repository')await drafts.clear({kind:'repository'});if(drafts&&a.kind==='create_release')await drafts.clear({kind:'release',owner:a.args.owner,repo:a.args.repo});}
         else if(name==='confirm')result=await ops.confirm(a.id);
         else if(name==='reject')result=ops.reject(a.id);
         else if(name==='attachment/remove'){await ops.removeAsset(a.id);result={ok:true};}

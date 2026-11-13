@@ -25,7 +25,7 @@ function zipTexts(buffer){return new Promise((resolve,reject)=>{
     let size=0;const chunks=[];
     stream.on('data',chunk=>{size+=chunk.length;if(size>MAX_ENTRY||total+size>MAX_TOTAL){stream.destroy();finish(Error('ZIP 条目超出读取上限，请提供精简源码。'));}else chunks.push(chunk);});
     stream.on('error',()=>finish(Error('ZIP 文本读取失败。')));
-    stream.on('end',()=>{if(done)return;const text=decode(Buffer.concat(chunks));if(text?.trim()){total+=size;files.push({path:name,text});}zip.readEntry();});
+    stream.on('end',()=>{if(done)return;total+=size;const text=decode(Buffer.concat(chunks));if(text?.trim()){files.push({path:name,text});}zip.readEntry();});
    });
   });zip.readEntry();
  });
