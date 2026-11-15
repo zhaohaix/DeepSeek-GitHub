@@ -6,7 +6,7 @@ import {Transform} from 'node:stream';
 import path from 'node:path';
 
 export const API='/dsh-github/api/';
-const ROUTES={state:'GET',repos:'GET',contents:'GET',releases:'GET','auth/start':'POST','auth/configure':'POST','auth/logout':'POST',prepare:'POST',confirm:'POST',reject:'POST',upload:'POST','attachment/remove':'POST','ai/copy':'POST','ai/program':'POST','draft/get':'POST','draft/save':'POST','draft/clear':'POST'};
+const ROUTES={state:'GET',repos:'GET',contents:'GET',releases:'GET','auth/start':'POST','auth/cancel':'POST','auth/configure':'POST','auth/logout':'POST',prepare:'POST',confirm:'POST',reject:'POST',upload:'POST','attachment/remove':'POST','ai/copy':'POST','ai/program':'POST','draft/get':'POST','draft/save':'POST','draft/clear':'POST'};
 const json=(res,status,value)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(value));};
 async function body(req){let size=0;const parts=[];for await(const b of req){size+=b.length;if(size>3*1024*1024)throw Error('请求内容过大。');parts.push(b);}return JSON.parse(Buffer.concat(parts).toString('utf8')||'{}');}
 export function admitted(req,connection){
@@ -35,6 +35,7 @@ export function routes({api,ops,auth,root,connection,releaseCopy,drafts}){
         else if(name==='ai/program'){if(!releaseCopy)throw Error('AI介绍服务未就绪。');result=await releaseCopy.describeProgram(a);}
         else if(name==='ai/copy'){if(!releaseCopy)throw Error('AI文案服务尚未就绪。');result=await releaseCopy.create(a);}
         else if(name==='auth/start')result=await auth.start();
+        else if(name==='auth/cancel'){auth.cancel();result={ok:true};}
         else if(name==='auth/configure'){await auth.configure(a.clientId);result={ok:true};}
         else if(name==='auth/logout'){await auth.logout();ops.clearPending();result={ok:true};}
         else if(name==='prepare'){result=await ops.prepare(a.kind,a.args);if(drafts&&a.kind==='create_repository')await drafts.clear({kind:'repository'});if(drafts&&a.kind==='create_release')await drafts.clear({kind:'release',owner:a.args.owner,repo:a.args.repo});}
