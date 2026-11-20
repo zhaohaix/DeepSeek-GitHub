@@ -1,6 +1,6 @@
 {
   "name": "dsh-github-studio",
-  "version": "0.6.8",
+  "version": "0.7.0",
   "description": "DeepSeek Harness GitHub 工作台：账号连接、仓库工具、AI 项目介绍与 Release 发布",
   "type": "module",
   "main": "lib/index.js",
@@ -26,6 +26,24 @@
         "@deepseek-ai/dsh-client-ui-settings"
       ],
       "platform": "web"
+    }
+  },
+  "dshGo": {
+    "v": 1,
+    "title": "GitHub Studio",
+    "icon": "code",
+    "contributes": {
+      "panels": [
+        {
+          "id": "github-account",
+          "title": "GitHub",
+          "icon": "code",
+          "placement": [
+            "plugin",
+            "features"
+          ]
+        }
+      ]
     }
   },
   "author": "zhaohaix",

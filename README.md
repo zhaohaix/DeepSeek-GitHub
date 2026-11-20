@@ -2,7 +2,7 @@
 
 **面向 DeepSeek Harness 的 GitHub 连接与发布插件。** 在聊天中读取项目、准备代码提交，在设置页管理仓库、生成项目介绍并发布程序版本。
 
-> 面向 Windows 和 macOS 上的 DeepSeek Harness 的第三方开源插件。
+> 面向 Windows 和 macOS 上的 DeepSeek Harness，以及 Android 版 DSH Go 的第三方开源插件。
 
 ![DeepSeek GitHub Studio：仓库管理与发布入口](docs/images/01-cover.webp)
 
@@ -16,7 +16,7 @@ DeepSeek GitHub Studio 将 GitHub 仓库操作集成到 Harness 的工具调用�
 
 | 模块 | 能力 |
 | --- | --- |
-| GitHub 连接 | OAuth Device Flow 登录和自动续期，凭据由 Windows DPAPI 或 macOS 钥匙串保护 |
+| GitHub 连接 | OAuth Device Flow 登录和自动续期，使用 Windows DPAPI、macOS 钥匙串或 DSH Go 主机凭据服务 |
 | 仓库浏览 | 浏览已授权仓库、目录和文本文件，查看版本及附件链接 |
 | 聊天工具 | 搜索公开仓库和代码、读取文件、准备建库及提交操作 |
 | 官网搜索 | 仓库／代码分类，高级筛选，直接在浏览器打开 GitHub 原生搜索 |
@@ -54,7 +54,7 @@ DeepSeek GitHub Studio 将 GitHub 仓库操作集成到 Harness 的工具调用�
 
 ### 环境要求
 
-- Windows 或 macOS。macOS 支持目标为 Apple Silicon 和 Intel，以 Harness 有对应构建为前提。
+- Windows、macOS 或 Android 版 DSH Go 本机引擎。macOS 兼容 Apple Silicon 和 Intel。
 - DeepSeek Harness。开发基线为 `0.2.2-rc.1`，其他版本的插件接口可能存在差异。
 - 网络能访问 GitHub 登录页、`api.github.com` 和 `uploads.github.com`。
 - 使用 AI 介绍时，需在 Harness 中配置可用默认模型。
@@ -79,6 +79,18 @@ cd DeepSeek-GitHub
 npm ci
 npm run verify
 ```
+
+### Android 版 DSH Go
+
+先安装并启动 DSH Go 的本机引擎。将对应版本的 `.tgz` 放到手机的下载目录，在 DSH Go 设置中打开「访问手机文件」，然后在 DSH Go 的本机终端运行：
+
+```sh
+dsh plugin --profile web add /sdcard/Download/dsh-github-studio-0.7.0.tgz
+```
+
+按提示重启引擎。可以在「全部功能 → 插件 → GitHub」打开原生面板，保存 OAuth App Client ID、获取设备码、打开授权页和查看登录状态。在 DSH Go 的「网页版 → 设置 → GitHub」可浏览仓库、生成介绍、上传附件、发布以及预览和确认写入。两个界面使用同一个登录状态。
+
+远程使用时，插件和凭据都在所选的 Harness 主机上。SSH 和中转模式的界面能力取决于 DSH Go 的连接方式。此版适配目标是 Android 的本机引擎。
 
 ## 配置 GitHub 登录
 
@@ -129,6 +141,7 @@ npm run verify
 
 - 暂存文件、诊断日志和文案工作区默认保存在用户主目录下的 `.dsh/github-connect`。
 - Windows 使用 DPAPI CurrentUser 加密本地令牌，macOS 将令牌保存到系统钥匙串。两种凭据都随系统账户隔离。
+- Android 本机引擎使用 Harness 管理的凭据记录，由 DSH Go 的应用私有环境和文件权限保护。默认的文件型提供方没有钥匙串式加密，和引擎同一账户运行的工具可以访问这一存储。
 - 本地 API 限定宿主浏览器身份及本机访问；本项目面向个人桌面环境，不适合作为公开多租户服务。
 - ZIP 只读取符合限制的文本，不运行其中的程序；会跳过依赖目录、部分构建产物和明显凭据文件。启发式筛选不能保证发现所有敏感信息。
 - AI 将所选文本发送给 Harness 配置的模型服务，生成结果需审阅，不能视为已验证的软件功能或测试结论。
