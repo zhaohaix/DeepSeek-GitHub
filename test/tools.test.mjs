@@ -4,7 +4,6 @@ import {Operations,GitHub} from '../src/core.mjs';
 import {definitions,localAgent} from '../src/tools.mjs';
 import {admitted} from '../src/http.mjs';
 import {GhAuth} from '../src/gh.mjs';
-import {windowsSeal} from '../src/gh.mjs';
 import {mkdtemp,readFile,access} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -33,7 +32,7 @@ test('Release 准备保留版本与更新说明，上传只能引用选定附件
  const ops=new Operations(api,{});const p=await ops.prepare('create_release',{owner:'me',repo:'demo',tag_name:'v1',body:'更新说明',target_commitish:'master'});assert.equal(ops.status(p.operationId).args.target_commitish,'master');assert.equal((await ops.confirm(p.operationId)).result.tag_name,'v1');
  await assert.rejects(()=>ops.prepare('upload_asset',{owner:'me',repo:'demo',releaseId:4,assetId:'missing'}),/选择/);
 });
-test('独立设备授权不调用 CLI 或共享凭据，使用 Windows DPAPI 保存',async()=>{
+test('独立设备授权不共享其他应用的凭据，使用 Windows DPAPI 保存',{skip:process.platform!=='win32'},async()=>{
  const root=await mkdtemp(path.join(os.tmpdir(),'dsh-auth-test-'));const urls=[];
  const auth=new GhAuth(root,{sleep:async()=>{},fetchImpl:async(url,init)=>{urls.push(url);const fields=new URLSearchParams(init.body);assert.equal(fields.get('client_id'),'fixture-client');return Response.json(url.endsWith('/code')?{device_code:'fixture-device',user_code:'ABCD-1234',expires_in:900,interval:5}:{access_token:'fixture-token'});}});
  await assert.rejects(()=>auth.token(),/登录/);await auth.configure('fixture-client');await auth.start();await auth.task;assert.equal(auth.login.state,'complete');assert.equal(await auth.token(),'fixture-token');assert.equal((await readFile(path.join(root,'credential.dpapi'),'utf8')).includes('fixture-token'),false);assert.equal(urls.length,2);await auth.logout();await assert.rejects(()=>auth.token(),/登录/);

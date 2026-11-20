@@ -2,7 +2,7 @@
 
 **面向 DeepSeek Harness 的 GitHub 连接与发布插件。** 在聊天中读取项目、准备代码提交，在设置页管理仓库、生成项目介绍并发布程序版本。
 
-> 第三方开源项目，非 DeepSeek 或 GitHub 官方产品。适用于 Windows 上的 DeepSeek Harness；不适用于普通的 `chat.deepseek.com` 聊天网页。
+> 面向 Windows 和 macOS 上的 DeepSeek Harness 的第三方开源插件。
 
 ![DeepSeek GitHub Studio：仓库管理与发布入口](docs/images/01-cover.webp)
 
@@ -16,7 +16,7 @@ DeepSeek GitHub Studio 将 GitHub 仓库操作集成到 Harness 的工具调用�
 
 | 模块 | 能力 |
 | --- | --- |
-| GitHub 连接 | OAuth Device Flow 登录；本机 Windows DPAPI 加密保存令牌 |
+| GitHub 连接 | OAuth Device Flow 登录和自动续期，凭据由 Windows DPAPI 或 macOS 钥匙串保护 |
 | 仓库浏览 | 浏览已授权仓库、目录和文本文件，查看版本及附件链接 |
 | 聊天工具 | 搜索公开仓库和代码、读取文件、准备建库及提交操作 |
 | 官网搜索 | 仓库／代码分类，高级筛选，直接在浏览器打开 GitHub 原生搜索 |
@@ -54,7 +54,7 @@ DeepSeek GitHub Studio 将 GitHub 仓库操作集成到 Harness 的工具调用�
 
 ### 环境要求
 
-- Windows；登录凭据保护依赖 Windows DPAPI CurrentUser。
+- Windows 或 macOS。macOS 支持目标为 Apple Silicon 和 Intel，以 Harness 有对应构建为前提。
 - DeepSeek Harness。开发基线为 `0.2.2-rc.1`，其他版本的插件接口可能存在差异。
 - 网络能访问 GitHub 登录页、`api.github.com` 和 `uploads.github.com`。
 - 使用 AI 介绍时，需在 Harness 中配置可用默认模型。
@@ -71,7 +71,7 @@ https://github.com/zhaohaix/DeepSeek-GitHub
 
 ### 使用本地源码或安装包
 
-也可以克隆项目后，在“添加插件”中输入本地项目目录。若使用构建好的 `.tgz`，按当前 Harness 插件管理器支持的本地包方式安装；项目附带 Windows 安装脚本，运行前需完全退出客户端。
+也可以克隆项目后，在“添加插件”中输入本地项目目录，或选择构建好的 `.tgz`。Windows 还可在完全退出 Harness 后运行随附安装脚本。macOS 直接通过插件管理器添加安装包。
 
 ```sh
 git clone https://github.com/zhaohaix/DeepSeek-GitHub.git
@@ -88,6 +88,8 @@ npm run verify
 2. 填写自己的应用名称及主页信息，并在应用设置中启用 **Device Flow**。
 3. 将公开的 **Client ID** 填入插件“设置 → GitHub”的登录应用配置。
 4. 点击“登录 GitHub”，打开 GitHub 官方设备授权页，输入显示的设备代码并授权。
+
+如果从 Windows 换到 Mac，在 Mac 上授权一次即可建立本机钥匙串凭据。若系统提示无法访问凭据，请在“钥匙串访问”中解锁登录钥匙串后重试。
 
 此流程不要求在插件中填写 Client Secret。不要把访问令牌、Client Secret 或本机配置上传到仓库。
 
@@ -125,8 +127,8 @@ npm run verify
 
 ## 隐私与安全边界
 
-- 本机数据默认保存在用户主目录下 `.dsh/github-connect`，包括加密令牌、暂存文件、诊断日志和文案工作区。
-- 令牌使用 Windows DPAPI CurrentUser 加密，不通过普通页面状态接口返回。
+- 暂存文件、诊断日志和文案工作区默认保存在用户主目录下的 `.dsh/github-connect`。
+- Windows 使用 DPAPI CurrentUser 加密本地令牌，macOS 将令牌保存到系统钥匙串。两种凭据都随系统账户隔离。
 - 本地 API 限定宿主浏览器身份及本机访问；本项目面向个人桌面环境，不适合作为公开多租户服务。
 - ZIP 只读取符合限制的文本，不运行其中的程序；会跳过依赖目录、部分构建产物和明显凭据文件。启发式筛选不能保证发现所有敏感信息。
 - AI 将所选文本发送给 Harness 配置的模型服务，生成结果需审阅，不能视为已验证的软件功能或测试结论。
@@ -152,8 +154,9 @@ npm ci
 npm run verify
 npm run release:check
 npm pack
-npm run release:source
 ```
+
+Windows 可以另运行 `npm run release:source` 生成源码 ZIP。
 
 公开打包检查要求预置 Client ID 为空，并排除个人运行资料、日志、浏览器缓存与凭据。请勿将整个本机开发目录直接上传。欢迎通过 Issue 报告可复现问题；提交截图或日志前请去除个人信息与秘密值。
 
@@ -164,7 +167,7 @@ npm run release:source
 
 登录的临时网络错误会自动重试；设备码有效期内轮询失败会保留设备码并退避，界面可取消本次登录。证书错误会立即给出提示，不会通过关闭 HTTPS 校验来绕过。建库、提交、发布和上传不会自动重放。
 
-插件网络连接使用 Node 内置 CA、Windows 系统信任证书以及启动时配置的额外 CA，只影响本插件。Steam++ 等证书接管模式需先正确安装其证书，再彻底退出并重开 Harness；线路不可用仍需切换或关闭 GitHub 加速。
+插件网络连接使用 Node 内置 CA、系统信任证书以及启动时配置的额外 CA。使用 Steam++ 等证书接管模式时，配置好系统信任后请彻底退出并重开 Harness。线路不可用时可切换线路或关闭 GitHub 加速。
 
 如需明确指定 HTTP/HTTPS 代理，可在启动 Harness 前设置本机环境变量 `DSH_GITHUB_PROXY`（例如 `http://127.0.0.1:7890`，端口以加速器实际配置为准）。也支持 `HTTP_PROXY`、`HTTPS_PROXY`、`NO_PROXY` 及小写形式；插件专用代理优先。暂不支持 SOCKS 地址、Windows PAC 或自动发现系统代理。不要把含账号密码的代理配置提交到仓库。
 
