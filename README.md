@@ -85,7 +85,7 @@ npm run verify
 先安装并启动 DSH Go 的本机引擎。将对应版本的 `.tgz` 放到手机的下载目录，在 DSH Go 设置中打开「访问手机文件」，然后在 DSH Go 的本机终端运行：
 
 ```sh
-dsh plugin --profile web add /sdcard/Download/dsh-github-studio-0.7.0.tgz
+dsh plugin --profile web add /sdcard/Download/dsh-github-studio-0.7.1.tgz
 ```
 
 按提示重启引擎。可以在「全部功能 → 插件 → GitHub」打开原生面板，保存 OAuth App Client ID、获取设备码、打开授权页和查看登录状态。在 DSH Go 的「网页版 → 设置 → GitHub」可浏览仓库、生成介绍、上传附件、发布以及预览和确认写入。两个界面使用同一个登录状态。
@@ -96,9 +96,9 @@ dsh plugin --profile web add /sdcard/Download/dsh-github-studio-0.7.0.tgz
 
 **公开版本没有预置个人 OAuth App Client ID。** 首次登录前需配置自己的 GitHub OAuth App：
 
-1. 在 GitHub 的 **Settings → Developer settings → OAuth Apps** 创建应用。
-2. 填写自己的应用名称及主页信息，并在应用设置中启用 **Device Flow**。
-3. 将公开的 **Client ID** 填入插件“设置 → GitHub”的登录应用配置。
+1. [打开 GitHub OAuth App 注册页](https://github.com/settings/applications/new)，登录自己的 GitHub 账号。
+2. 应用名称可填 `DeepSeek GitHub Studio`。主页 URL 和重定向 URI 都填 `https://github.com/zhaohaix/DeepSeek-GitHub`。应用描述可留空，通配符保持关闭。勾选 **启用设备流（Enable Device Flow）**，再注册应用。
+3. 将应用详情里的 **Client ID** 粘贴到插件「设置 → GitHub」并保存。已有启用了设备流的 OAuth App 可直接复用 Client ID。
 4. 点击“登录 GitHub”，打开 GitHub 官方设备授权页，输入显示的设备代码并授权。
 
 如果从 Windows 换到 Mac，在 Mac 上授权一次即可建立本机钥匙串凭据。若系统提示无法访问凭据，请在“钥匙串访问”中解锁登录钥匙串后重试。

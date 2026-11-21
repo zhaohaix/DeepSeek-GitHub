@@ -1,5 +1,6 @@
 import React,{useState,useEffect,useCallback,useRef} from 'react';
 import {mergeConnectionState} from './session-state.mjs';
+import {oauthRegistrationUrl,oauthHomepage} from './oauth-setup.mjs';
 import {ReleaseEditor} from './release-editor.jsx';
 import css from './style.css';
 import {BrowserSearch} from './browser-search.jsx';
@@ -16,6 +17,58 @@ const kindLabel={create_repository:'创建仓库',commit_files:'提交文件',cr
 const statusLabel={pending:'待确认',checking:'检查账号中',running:'正在执行',completed:'已完成',failed:'失败',cancelled:'已取消',expired:'已过期'};
 const sizeLabel=n=>n>=1024**2?(n/1024**2).toFixed(1)+' MB':n>=1024?(n/1024).toFixed(1)+' KB':n+' B';
 function Field({label,children}){return <label className="gh-field"><span>{label}</span>{children}</label>;}
+function OAuthSetup({clientId, busy, onSave}) {
+  const [copyStatus, setCopyStatus] = useState('');
+  async function copy(label, value) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopyStatus(label + '已复制');
+    } catch {
+      setCopyStatus('自动复制失败，请长按或选中地址手动复制。');
+    }
+  }
+  return <details open={!clientId} className="gh-connect gh-oauth-setup">
+    <summary>{clientId ? 'GitHub 登录配置（已配置）' : '首次登录？配置你的 GitHub OAuth App'}</summary>
+    <p>首次使用请在自己的 GitHub 账号下注册一次。已经有启用了设备流的 OAuth App？直接用原来的 Client ID，同一个 ID 可在电脑和手机上使用。</p>
+    <ol className="gh-oauth-steps">
+      <li>
+        <a href={oauthRegistrationUrl} target="_blank" rel="noreferrer">打开 GitHub OAuth App 注册页</a>，登录你的 GitHub 账号。
+      </li>
+      <li>
+        按下面的示例填写表单，再点击 GitHub 的「注册应用」。
+        <ul>
+          <li><strong>应用名称</strong>可填 <code>DeepSeek GitHub Studio</code>，也可以取自己的名字。</li>
+          <li><strong>主页 URL</strong>填插件的仓库地址。
+            <div className="gh-oauth-value"><code>{oauthHomepage}</code>
+              <button type="button" onClick={()=>copy('主页 URL', oauthHomepage)}>复制主页 URL</button>
+            </div>
+          </li>
+          <li><strong>应用描述</strong>可留空。</li>
+          <li><strong>重定向 URI</strong>填和主页 URL 一样的仓库地址。通配符匹配保持关闭。
+            <div className="gh-oauth-value"><code>{oauthHomepage}</code>
+              <button type="button" onClick={()=>copy('重定向 URI', oauthHomepage)}>复制重定向 URI</button>
+            </div>
+          </li>
+          <li>勾选<strong>启用设备流（Enable Device Flow）</strong>。</li>
+        </ul>
+      </li>
+      <li>注册后，在 GitHub 应用详情里复制 <strong>Client ID</strong>，粘贴到下方并保存。再点「登录 GitHub」，在 GitHub 授权页输入插件显示的设备码并确认。</li>
+    </ol>
+    {copyStatus && <p role="status">{copyStatus}</p>}
+    <p>只需填写 Client ID，无需生成 Client Secret。</p>
+    <form className="gh-form" onSubmit={event=>{
+      event.preventDefault();
+      const form = new FormData(event.currentTarget);
+      onSave(form.get('clientId').trim());
+    }}>
+      <Field label="OAuth App Client ID">
+        <input name="clientId" required maxLength={120} defaultValue={clientId ?? ''}
+          autoCapitalize="none" autoComplete="off" spellCheck={false} placeholder="粘贴你的 Client ID" />
+      </Field>
+      <button disabled={busy}>保存应用配置</button>
+    </form>
+  </details>;
+}
 function Empty({title,children}){return <div className="gh-empty"><GitHubIcon size={30}/><strong>{title}</strong><p>{children}</p></div>;}
 function Operation({op,assets,onConfirm,onReject,busy}){const a=op.args,attachment=assets.find(f=>f.id===a.assetId);return <article className="gh-operation">
   <div className="gh-row"><strong>{kindLabel[op.kind]}</strong><span className={'gh-badge '+(op.status==='completed'?'gh-success':op.status==='failed'?'gh-failed':'')}>{statusLabel[op.status]??op.status}</span></div>
@@ -48,7 +101,8 @@ export function GitHubSettings(){
   return <div className="dsh-github"><style>{css}</style>
     <header className="gh-header"><div className="gh-title"><GitHubIcon size={26}/><h2>GitHub</h2></div>{!logged&&<button className="gh-primary" disabled={!!busy||['preparing','waiting'].includes(login.state)} onClick={()=>act('正在连接',()=>post('auth/start'))}>{login.state==='preparing'?'正在准备登录…':login.state==='waiting'?'等待授权…':'登录 GitHub'}</button>}</header>
     <p className="gh-intro">连接你的账号，在聊天中浏览仓库、提交代码和发布程序。</p>
-    {state&&!logged&&<details open={!state.clientId} className="gh-connect"><summary>登录应用配置{state.clientId?'（已配置）':'（发布者首次配置）'}</summary><p>插件发布者只需注册一次 GitHub OAuth App，并启用 Device Flow。最终用户使用同一个 Client ID 登录，不需要 Client Secret。</p><a href="https://github.com/settings/applications/new" target="_blank" rel="noreferrer">打开 GitHub 应用注册页面</a><form className="gh-form" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);act('正在保存',()=>post('auth/configure',{clientId:f.get('clientId')}));}}><Field label="OAuth App Client ID"><input name="clientId" required defaultValue={state.clientId??''} placeholder="填写发布者的 Client ID"/></Field><button disabled={!!busy}>保存应用配置</button></form></details>}
+    {state&&!logged&&<OAuthSetup clientId={state.clientId} busy={!!busy}
+      onSave={clientId=>act('正在保存',()=>post('auth/configure',{clientId}))}/>}
     {error&&<div role="alert" className="gh-errorbox">{error}<button aria-label="关闭提示" onClick={()=>setError('')}>×</button></div>}
     {state?.user&&state.errorKind&&state.errorKind!=='auth'&&<p role="status" className="gh-muted">GitHub 暂时不可用（{state.error}），已保留当前界面状态并自动重试。</p>}
     {state?.hasCredential&&!logged&&<button disabled={!!busy} onClick={()=>act('正在清除本地连接',()=>post('auth/logout'))}>清除本地连接</button>}
